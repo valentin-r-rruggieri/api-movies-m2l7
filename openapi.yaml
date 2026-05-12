@@ -1,0 +1,320 @@
+openapi: 3.1.1
+info:
+  title: Movies API
+  version: 1.0.0
+  description: API REST para gestionar peliculas favoritas con Express y PostgreSQL.
+  contact:
+    name: Equipo de Desarrollo
+    email: dev@example.com
+
+servers:
+  - url: http://localhost:3000
+    description: Desarrollo local
+  - url: https://api-movies-m2l7-production.up.railway.app
+    description: Produccion en Railway
+
+tags:
+  - name: Health
+    description: Informacion general de la API
+  - name: Movies
+    description: Operaciones CRUD de peliculas
+
+paths:
+  /:
+    get:
+      summary: Obtener informacion general de la API
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Informacion base y rutas disponibles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Movies API
+                  endpoints:
+                    type: object
+                    properties:
+                      movies:
+                        type: string
+                        example: /api/movies
+                      docs:
+                        type: string
+                        example: /api-docs
+                      openapi:
+                        type: string
+                        example: /openapi.yaml
+
+  /api/movies:
+    get:
+      summary: Obtener todas las peliculas
+      tags:
+        - Movies
+      responses:
+        '200':
+          description: Lista de peliculas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Movie'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Crear una pelicula
+      tags:
+        - Movies
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMovieInput'
+            example:
+              title: Interstellar
+              director: Christopher Nolan
+              year: 2014
+              genre: Sci-Fi
+              rating: 8.6
+      responses:
+        '201':
+          description: Pelicula creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movie'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/movies/{id}:
+    get:
+      summary: Obtener una pelicula por id
+      tags:
+        - Movies
+      parameters:
+        - $ref: '#/components/parameters/MovieId'
+      responses:
+        '200':
+          description: Pelicula encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movie'
+        '400':
+          $ref: '#/components/responses/InvalidId'
+        '404':
+          $ref: '#/components/responses/MovieNotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      summary: Actualizar una pelicula
+      tags:
+        - Movies
+      parameters:
+        - $ref: '#/components/parameters/MovieId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMovieInput'
+            example:
+              rating: 9
+      responses:
+        '200':
+          description: Pelicula actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movie'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/MovieNotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: Eliminar una pelicula
+      tags:
+        - Movies
+      parameters:
+        - $ref: '#/components/parameters/MovieId'
+      responses:
+        '200':
+          description: Pelicula eliminada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Pelicula eliminada exitosamente
+        '400':
+          $ref: '#/components/responses/InvalidId'
+        '404':
+          $ref: '#/components/responses/MovieNotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  parameters:
+    MovieId:
+      name: id
+      in: path
+      required: true
+      description: ID entero positivo de la pelicula
+      schema:
+        type: integer
+        minimum: 1
+      example: 1
+
+  schemas:
+    Movie:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: Inception
+        director:
+          type: string
+          example: Christopher Nolan
+        year:
+          type: integer
+          example: 2010
+        genre:
+          type:
+            - string
+            - 'null'
+          example: Sci-Fi
+        rating:
+          type:
+            - string
+            - 'null'
+          description: PostgreSQL numeric puede serializarse como string al responder.
+          example: '8.8'
+
+    CreateMovieInput:
+      type: object
+      required:
+        - title
+        - director
+        - year
+      properties:
+        title:
+          type: string
+          maxLength: 200
+          example: Interstellar
+        director:
+          type: string
+          maxLength: 100
+          example: Christopher Nolan
+        year:
+          type: integer
+          minimum: 1888
+          example: 2014
+        genre:
+          type: string
+          maxLength: 50
+          example: Sci-Fi
+        rating:
+          type: number
+          minimum: 0
+          maximum: 10
+          example: 8.6
+
+    UpdateMovieInput:
+      type: object
+      minProperties: 1
+      properties:
+        title:
+          type: string
+          maxLength: 200
+          example: Interstellar
+        director:
+          type: string
+          maxLength: 100
+          example: Christopher Nolan
+        year:
+          type: integer
+          minimum: 1888
+          example: 2014
+        genre:
+          type: string
+          maxLength: 50
+          example: Sci-Fi
+        rating:
+          type: number
+          minimum: 0
+          maximum: 10
+          example: 9
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Pelicula no encontrada
+
+    ErrorDetail:
+      type: object
+      properties:
+        field:
+          type: string
+          example: title
+        message:
+          type: string
+          example: El titulo es requerido
+
+    ValidationError:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Datos invalidos
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorDetail'
+
+  responses:
+    InvalidId:
+      description: Parametro id invalido
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+
+    MovieNotFound:
+      description: Pelicula no encontrada
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    ValidationError:
+      description: Datos invalidos
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+
+    InternalServerError:
+      description: Error interno del servidor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
