@@ -364,6 +364,27 @@ DATABASE_URL=${{postgres.DATABASE_URL}}
 
 Railway distingue mayusculas y minusculas en el nombre del servicio.
 
+Si aparece un error con `postgres.railway.internal`, usar la URL publica:
+
+```text
+DATABASE_URL=${{Postgres.DATABASE_PUBLIC_URL}}
+```
+
+Si el servicio PostgreSQL se llama `postgres`, usar:
+
+```text
+DATABASE_URL=${{postgres.DATABASE_PUBLIC_URL}}
+```
+
+No escribir comillas en Railway. Usar `production`, no `"production"`. Usar `${{Postgres.DATABASE_PUBLIC_URL}}`, no `"${{Postgres.DATABASE_PUBLIC_URL}}"`.
+
+Variables recomendadas para evitar problemas en clase:
+
+```text
+NODE_ENV=production
+DATABASE_URL=${{Postgres.DATABASE_PUBLIC_URL}}
+```
+
 ## Por que db/config.js sirve local y en Railway
 
 En local se usan estas variables:
@@ -404,6 +425,91 @@ Abrir Swagger UI:
 
 ```text
 https://TU-DOMINIO-RAILWAY/api-docs
+```
+
+## Errores comunes en Railway
+
+### Error `connect ECONNREFUSED 127.0.0.1:5432`
+
+La API esta intentando conectarse a PostgreSQL local dentro del contenedor de Railway.
+
+Esto pasa cuando `DATABASE_URL` no esta configurada en el servicio Express o esta configurada en el servicio incorrecto.
+
+Solucion:
+
+1. Entrar al servicio de la API, no al servicio Postgres.
+2. Ir a Variables.
+3. Agregar:
+
+```text
+NODE_ENV=production
+DATABASE_URL=${{Postgres.DATABASE_PUBLIC_URL}}
+```
+
+4. Ir a Deployments.
+5. Hacer Redeploy.
+
+### Error `getaddrinfo ENOTFOUND postgres.railway.internal`
+
+La API esta intentando usar la red interna de Railway, pero el hostname interno no resolvio desde el servicio Express.
+
+Solucion recomendada para clase:
+
+```text
+DATABASE_URL=${{Postgres.DATABASE_PUBLIC_URL}}
+```
+
+Luego hacer Redeploy.
+
+### Error `relation "movies" does not exist`
+
+La API conecto correctamente a PostgreSQL, pero la tabla `movies` todavia no existe.
+
+Solucion:
+
+```bash
+psql "DATABASE_PUBLIC_URL_DE_RAILWAY" -f db/setup.sql
+```
+
+Despues verificar:
+
+```bash
+psql "DATABASE_PUBLIC_URL_DE_RAILWAY" -c "SELECT * FROM movies;"
+```
+
+### La ruta `/` funciona pero `/api/movies` falla
+
+La aplicacion Express esta levantada, pero hay un problema en la base de datos.
+
+Revisar en este orden:
+
+1. Variables del servicio API.
+2. Redeploy despues de cambiar variables.
+3. Que `DATABASE_URL` use `DATABASE_PUBLIC_URL`.
+4. Que `db/setup.sql` haya sido ejecutado en Railway.
+5. Logs del servicio API.
+
+### Como deben quedar las variables finales
+
+En el servicio de la API:
+
+```text
+NODE_ENV=production
+DATABASE_URL=${{Postgres.DATABASE_PUBLIC_URL}}
+```
+
+En el servicio Postgres no hace falta agregar nada manual para este proyecto.
+
+Si se copia el valor directo, debe ser sin comillas:
+
+```text
+DATABASE_URL=postgresql://usuario:password@host:puerto/railway
+```
+
+No usar:
+
+```text
+DATABASE_URL="postgresql://usuario:password@host:puerto/railway"
 ```
 
 ## Verificar persistencia en produccion
